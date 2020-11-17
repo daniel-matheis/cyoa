@@ -14,17 +14,18 @@ def pr(txt, **kwargs):
     print(txt, **kwargs)
 
 ''' T Class (Time & Tempo) '''
-class T:
-    XXS     = 0.29
-    XS      = 0.47
-    S       = 0.56
-    M       = 0.65
-    L       = 0.74
-    XL      = 0.83
-    XXL     = 0.92
-    XXXL    = 1.10
+class T:    # all in seconds
+    PERCENT   = 0.33      # 1.00 for Original Time of Pauses
+    XXS     = 0.29*PERCENT
+    XS      = 0.47*PERCENT
+    S       = 0.56*PERCENT
+    M       = 0.65*PERCENT
+    L       = 0.74*PERCENT
+    XL      = 0.83*PERCENT
+    XXL     = 0.92*PERCENT
+    XXXL    = 1.10*PERCENT
 
-''' C Class (Colors '''
+''' C(OLORS) Class (40-47 BG, 100-107 BG light) '''
 class C:
     BLACK           = "\033[30m"
     RED             = "\033[31m"
@@ -32,15 +33,15 @@ class C:
     YELLOW          = "\033[33m"
     BLUE            = "\033[34m"
     PURPLE          = "\033[35m"
-    CYAN            = "\033[36m"
-    GRAY            = "\033[90m"
-    LIGHTGRAY       = "\033[37m"
-    LIGHTRED        = "\033[91m"
-    LIGHTGREEN      = "\033[92m"
-    LIGHTYELLOW     = "\033[93m"
-    LIGHTBLUE       = "\033[94m"
-    LIGHTPURPLE     = "\033[95m"
-    LIGHTCYAN       = "\033[96m"
+    CYAN            = "\033[36m" # Location / Node
+    GRAY            = "\033[90m" # Decision taken
+    LIGRAY       = "\033[37m"
+    LIRED        = "\033[91m"
+    LIGREEN      = "\033[92m"
+    LIYELLOW     = "\033[93m"
+    LIBLUE       = "\033[94m"
+    LIPURPLE     = "\033[95m"
+    LICYAN       = "\033[96m"
     WHITE           = "\033[97m"
     BOLD            = "\033[1m"
     CURSIVE         = "\033[3m"
@@ -93,7 +94,10 @@ class Node:
 
     def print_choices_txt(self):
         for i, chc in enumerate(self.choices):  # Print all Choices Texts
-            c = f'pr(f"{i + 1} · {chc.txt}")'
+            if len(self.choices) == 1:
+                c = f'pr(f"{C.YELLOW}·{C.END} · {chc.txt}")'
+            else:
+                c = f'pr(f"{C.YELLOW}{i + 1}{C.END} · {chc.txt}")'
             choice_txt_updated = compile(c, "new_choice_txt", "exec")
             exec(choice_txt_updated)
 
@@ -103,9 +107,9 @@ class Node:
             while True:
                 try:
                     inp = input()
-                    if inp == "" or inp == "1":
+                    if inp == "" or inp == " " or inp == "0" or inp == "1":
                         break
-                    pr(f"Press enter or choice number.")
+                    pr(f"Press 'Enter'.")
                 except ValueError:
                     pr("ValueError")
             pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
@@ -157,7 +161,7 @@ class Choice:
             exec(effect)
 
 ''' CHARACTER Class - All people & creatures '''
-class Character:
+class Character: # Child Class for Player?
     def __init__(self, name, location):
         self.name = name
         self.hp = 50
@@ -170,7 +174,7 @@ class Character:
         pr(f"HP: {self.hp}")
 
     def show_inv(self):
-        pr(f"Inventory ({len(self.inventory)}):", end=" ")
+        pr(f"INVENTORY ({len(self.inventory)}) ·", end=" ")
         for item in self.inventory:
             pr(item, end=" · ")
         pr("\n")
@@ -184,7 +188,10 @@ class Character:
             self.hp += randhp
             pr(f"Plus {randhp} HP!\n")
 
-    def skill_mod(self, skill, value, *highervalue): # !?
+    def skill_mod(self, skill, mod, *higher_mod): # !?
+        pass
+
+    def catch(self, attempts, targets): # merge fish() & hunt()
         pass
 
     def fish(self, attempts):
@@ -193,13 +200,13 @@ class Character:
         for i in range(attempts):
             sleep(T.XL)
             hits.append(round(random(),2))
-            if hits[i] >= 0.45:
-                q = (Prey(i, Prey.fish_species))
-                self.inventory.append(q)
-                quarry.append(q)
-                pr(f"Success ({hits[i]}) - {str(q).title()} caught!")
+            if hits[i] >= 0.42:
+                slain_animal = (Prey(i, Prey.fish_species))
+                self.inventory.append(slain_animal)
+                quarry.append(slain_animal)
+                pr(f"Success ({hits[i]}) - {str(slain_animal)} caught!") # "Success"-variety
             else:
-                pr("Fail.")
+                pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
         pr(f"You had {attempts} nibbles and got {len(quarry)} fish!\n")
         sleep(T.XXL)
@@ -210,48 +217,56 @@ class Character:
         for i in range(attempts):
             sleep(T.XS)
             hits.append(round(random(),2))
-            if hits[i] >= 0.65:
-                q = (Prey(i, Prey.game_species))
-                self.inventory.append(q)
-                quarry.append(q)
-                pr(f"Success ({hits[i]}) - {str(q).title()} caught!")
+            if hits[i] >= 0.52:
+                slain_animal = (Prey(i, Prey.game_species))
+                self.inventory.append(slain_animal)
+                quarry.append(slain_animal)
+                pr(f"Success ({hits[i]}) - {str(slain_animal)} caught!") # "Success"-variety
             else:
-                pr("Fail.")
+                pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
         pr(f"You had {attempts} sightings and got {len(quarry)} animals!\n")
         sleep(T.XXL)
 
 ''' ITEM Class '''
 class Item:
-    sizes = ["small", "average", "large", "gigantic"]
+    sizes = ["tiny", "small", "average", "large", "very large", "giant"]
     def __init__(self, name):
         self.name = name
         self.size = choice(Item.sizes)
+        self.value = None # to calculate prize for trade
 
     def __repr__(self):
         return f"{self.size} {self.name}"
 
 ''' PREY Class '''
 class Prey(Item):
-    fish_species = ["Trout", "Pike", "Carp", "Catfish", "Tench", "Bass", "Zander"]
-    game_species = ["Rabbit", "Duck", "Turkey", "Mallard", "Deer", "Boar", "Pheasant"]
-    nick_prefixes = ["Sad", "Uncle", "Señor", "King", "Lord", "Sweet", "Maestro", "Silly", "Big"]
-    nicks = ["Joey", "Steve", "Magnus", "Herman", "Popeye", "Hank", "Bob", "Al", "Otto"]
+    Item.sizes.append("infant")
+    fish_species = ["Trout", "Pike", "Carp", "Catfish", "Tench",
+                    "Bass", "Zander", "Eel", "Cod", "Crayfish"]
+    game_species = ["Rabbit", "Wild Goose", "Turkey", "Mallard", "Deer","Squirrel",
+                    "Boar", "Pheasant", "Grouse", "Partridge", "Weasel", "Muskrat"]
+    nick_prefixes = ["Monster", "Uncle", "Señor", "King", "Lord", "Sweet",
+                     "Maestro", "Silly", "Big", "Old Boy"]
+    nicks = ["Joey", "Steve", "Magnus", "Herman", "Fritz", "Hank", "Bob",
+             "Al", "Otto", "Willie", "Tommy", "Ricky", "Dewy", "Georgie", "Olaf"]
     def __init__(self, name, species):
         super().__init__(name)
-        self.prfx = ""
+        self.prefix = ""
         self.species = species
         self.name = choice(self.species)
-        if self.size == "gigantic":
+        self.type = self.name
+        if self.size == "giant":
             if random() > 0.50:
-                self.prfx = choice(self.nick_prefixes) + " "
-            self.name = f'{self.name} ("{self.prfx}{choice(self.nicks)}")'
+                self.prefix = choice(self.nick_prefixes) + " "
+            self.name = f'{self.name} ("{self.prefix}{choice(self.nicks)}")'
 
 ''' AREA Class '''
 class Area:
     def __init__(self, name):
         self.name = name
         self.nodes = []
+        self.sample_prey = [] # weighed sample of fauna for every area's flora
 
     def __repr__(self):
         return f"{self.name}"
@@ -259,8 +274,10 @@ class Area:
 ''' CHARACTER & ITEMS '''
 geryna = Area("Geryna")
 player = Character("Dan", "Gate")
+vip_npc_001 = Character("", "harbour") # Trader at the market; goods & intel
 
 ''' NODES & CHOICES '''
+'''      STORY      '''
 gate = Node(
     "City Gate", geryna,
     "Welcome to {self.area.name}. You're in front of the {self.name}")
