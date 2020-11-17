@@ -1,6 +1,9 @@
 """ Choose Your Own Adventure Node-Choice-FX System """
+
 import os
 from random import *
+from time import *
+import textwrap
 
 ''' Clear the screen '''
 def clear_screen():
@@ -12,16 +15,26 @@ def pr(txt, **kwargs):
 
 ''' C Class (Colors) '''
 class C:
-    PURPLE = '\033[95m'
-    CYAN = '\033[96m'
-    DARKCYAN = '\033[36m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    END = '\033[0m'
+    BLACK           = "\033[30m"
+    RED             = "\033[31m"
+    GREEN           = "\033[32m"
+    YELLOW          = "\033[33m"
+    BLUE            = "\033[34m"
+    PURPLE          = "\033[35m"
+    CYAN            = "\033[36m"
+    GRAY            = "\033[90m"
+    LIGHTGRAY       = "\033[37m"
+    LIGHTRED        = "\033[91m"
+    LIGHTGREEN      = "\033[92m"
+    LIGHTYELLOW     = "\033[93m"
+    LIGHTBLUE       = "\033[94m"
+    LIGHTPURPLE     = "\033[95m"
+    LIGHTCYAN       = "\033[96m"
+    WHITE           = "\033[97m"
+    BOLD            = "\033[1m"
+    CURSIVE         = "\033[3m"
+    UNDERLINE       = "\033[4m"
+    END             = "\033[0m" # Reset All
 
 ''' NODE Class '''
 class Node:
@@ -36,28 +49,28 @@ class Node:
     def __repr__(self):
         return f"{self.name} in {self.area}"
 
-    def play(self):
+    def play(self): # Main Method that calls upon the single parts
         player.node = self
         player.location = self.name
-        pr(f"You're at the {C.DARKCYAN}{player.location}{C.END}")
-        self.node_text_update_and_print()
-        self.choices_update_and_print()
-        if not self.choices:
-            return # or quit()
+        pr(f"You're at the {C.CYAN}{player.location}{C.END}")
+        self.print_node_txt()
+        self.print_choices_txt()
+        # if not self.choices: # needed if no choices in node
+        #     return # return or quit()
         self.take_decision()
         self.fx_fallout()
         self.play_next_node()
 
-    def node_text_update_and_print(self):
+    def print_node_txt(self):
         t = f'pr(f"{self.txt}")'
-        new_txt = compile(t, "New_txt", "exec")
-        exec(new_txt)  # Print Node Text
+        node_txt_updated = compile(t, "new_node_txt", "exec")
+        exec(node_txt_updated)  # Print Node Text
 
-    def choices_update_and_print(self):
+    def print_choices_txt(self):
         for i, chc in enumerate(self.choices):  # Print all Choices Texts
-            c = f'pr(f"{i + 1}) {chc.txt}")'
-            new_choice_txt = compile(c, "New_Choice_txt", "exec")
-            exec(new_choice_txt)
+            c = f'pr(f"{i + 1} · {chc.txt}")'
+            choice_txt_updated = compile(c, "new_choice_txt", "exec")
+            exec(choice_txt_updated)
 
     def take_decision(self):
         input_tries = 1 # including successful input
@@ -67,20 +80,23 @@ class Node:
                 punc_mark = "!"
             try:
                 self.decision = int(input(""))  # Decision Integer Check
-                if len(self.choices) >= self.decision > 0:  # Decision in Choices Check
+                if len(self.choices) >= self.decision > 0:
                     break
                 pr(f"Enter number within choices{punc_mark}")
                 input_tries += 1
             except ValueError: # No Integer Exception
                 print(f"ValueError - Enter number{punc_mark}")
                 input_tries += 1
+        sleep(0.07)
+        pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
+        sleep(0.48)
         pr("")
 
     def fx_fallout(self):
         self.choices[self.decision - 1].fx_repercussions()  # FX of Decision
 
     def play_next_node(self):
-        self.next_node = self.choices[self.decision - 1].dest # Determine NEXT NODE
+        self.next_node = self.choices[self.decision - 1].dest
         globals()[self.next_node].play() # Play NEXT NODE
 
 ''' CHOICE Class '''
@@ -116,25 +132,56 @@ class Character:
         for item in self.inventory:
             pr(item, end=" · ")
         pr("\n")
-        # pr(self.__dict__)
 
-    def hp_plus(self, hp, *args):
-        if not args:
+    def hp_mod(self, hp, *higher_hp):
+        if not higher_hp:
             self.hp += hp
             pr(f"Plus{hp} HP!\n")
         else:
-            randhp = randint(hp, args[0])
+            randhp = randint(hp, higher_hp[0])
             self.hp += randhp
             pr(f"Plus {randhp} HP!\n")
 
-    def fish(self, number):
-        pr(f"{number} Fish caught!\n")
-        for i in range(number):
-            self.inventory.append(Fish(i))
+    def skill_mod(self, skill, value, *highervalue): # !?
+        pass
+
+    def fish(self, attempts):
+        quarry = []
+        hits = []
+        for i in range(attempts):
+            sleep(0.63)
+            hits.append(round(random(),2))
+            if hits[i] >= 0.45:
+                q = (Prey(i, Prey.fish_species))
+                self.inventory.append(q)
+                quarry.append(q)
+                pr(f"Success ({hits[i]}) - {str(q).title()} caught!")
+            else:
+                pr("Fail.")
+        sleep(0.9)
+        pr(f"You tried {attempts} times and got {len(quarry)} fish!\n")
+        sleep(1.2)
+
+    def hunt(self, attempts):
+        quarry = []
+        hits = []
+        for i in range(attempts):
+            sleep(0.63)
+            hits.append(random())
+            if hits[i] >= 0.65:
+                q = (Prey(i, Prey.game_species))
+                self.inventory.append(q)
+                quarry.append(q)
+                pr(f"Success ({round(hits[i], 2)}) - {str(q).title()} caught!")
+            else:
+                pr("Fail.")
+        sleep(0.9)
+        pr(f"You tried {attempts} times and got {len(quarry)} animals!\n")
+        sleep(1.2)
 
 ''' ITEM Class '''
 class Item:
-    sizes = ["small", "medium", "large", "enormous"]
+    sizes = ["small", "medium", "large", "gigantic"]
     def __init__(self, name):
         self.name = name
         self.size = choice(Item.sizes)
@@ -142,14 +189,21 @@ class Item:
     def __repr__(self):
         return f"{self.size} {self.name}"
 
-class Fish(Item):
-    names = ["Trout", "Pike", "Carp", "Wels Catfish", "Tench", "Bass", "Zander"]
-    nicknames = ["Joey", "Sad Steve", "Bobby D", "Uncle Herman", "Popeye", "Hank"]
-    def __init__(self, name):
+''' PREY Class '''
+class Prey(Item):
+    fish_species = ["Trout", "Pike", "Carp", "Catfish", "Tench", "Bass", "Zander"]
+    game_species = ["Rabbit", "Duck", "Turkey", "Mallard", "Deer", "Boar", "Pheasant"]
+    nick_prefixes = ["Sad", "Uncle", "Señor", "King", "Lord", "Happy", "Bad", "Silly"]
+    nicks = ["Joey", "Steve", "Bobby", "Herman", "Popeye", "Hank", "Bob", "Al", "Otto"]
+    def __init__(self, name, species):
         super().__init__(name)
-        self.name = choice(self.names)
-        if self.size == "enormous":
-            self.name = f'{self.name} ("{choice(self.nicknames)}")'
+        self.prfx = ""
+        self.species = species
+        self.name = choice(self.species)
+        if self.size == "gigantic":
+            if random() > 0.50:
+                self.prfx = choice(self.nick_prefixes) + " "
+            self.name = f'{self.name} ("{self.prfx}{choice(self.nicks)}")'
 
 ''' AREA Class '''
 class Area:
@@ -163,22 +217,20 @@ class Area:
 ''' CHARACTER & ITEMS '''
 geryna = Area("Geryna")
 player = Character("Dan", "Gate")
-# fish = Fish()
 
 ''' NODES & CHOICES '''
 gate = Node(
     "City Gate", geryna,
     "Welcome to {self.area.name}. You're in front of the {self.name}")
-# gate.city = geryna
 gate_c1 = Choice(
-    gate, "Hunt rabbits.",
-    "woods", "pr('Rabbit!')", "player.hp_plus(3,15)") # random hp+
+    gate, "Try to catch some wild animals.",
+    "woods", "pr('Let\\'s get the hunt on!')", "player.hunt(randint(2,5))","player.skill_mod(3,15)") # random hp+
 gate_c2 = Choice(
-    gate, "Fish in a pond inside.",
-    "pond", "player.fish(randint(1, 9))") # random catch
+    gate, "Fish in a pond next to the city.",
+    "pond", "player.fish(randint(2,7))") # random catch
 woods = Node(
     "Woods", geryna,
-    "The deep woods.")
+    "The deep woods. Nothing much here yet.")
 woods_c1 = Choice(
     woods, "Back to the city gate.",
     "gate")
@@ -186,8 +238,8 @@ pond = Node(
     "Fish Pond", geryna,
     "The fish pond is beautiful.")
 pond_c1 = Choice(
-    pond, "Hunt in the woods.",
-    "woods", "pr('A little workout does wonders!')", "player.hp_plus(2,6)") # fixed hp+
+    pond, "Take a walk in the woods.",
+    "woods", "pr('A little workout does wonders!')", "player.hp_mod(2,6)")
 pond_c2 = Choice(
     pond, "To the harbour!",
     "harbour")
@@ -197,4 +249,10 @@ harbour = Node(
 harbour_c1 = Choice(
     harbour, "Show stats & inventory",
     "harbour", "player.show_stats()", "player.show_inv()")
+harbour_c2 = Choice(
+    harbour, "Follow a small path back to the gate",
+    "gate", "pr('You slip a couple of times!')", "player.hp_mod(-4,-1)")
+harbour_c3 = Choice(
+    harbour, "I really should go catch more fish!",
+    "pond", "player.fish(randint(4,9))")
 gate.play()
