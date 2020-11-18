@@ -113,7 +113,7 @@ class Node:
                 except ValueError:
                     pr("ValueError")
             pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
-            sleep(0.48)
+            sleep(T.XS)
             pr("")
             globals()[self.choices[0].dest].play()
 
@@ -134,7 +134,7 @@ class Node:
                 input_tries += 1
         sleep(0.07)
         pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
-        sleep(0.48)
+        sleep(T.XS)
         pr("")
 
     def fx_fallout(self):
@@ -180,13 +180,20 @@ class Character: # Child Class for Player?
         pr("\n")
 
     def hp_mod(self, hp, *higher_hp):
+        plus_minus = "Plus"
         if not higher_hp:
             self.hp += hp
-            pr(f"Plus{hp} HP!\n")
+            if hp < 0:
+                plus_minus = "Minus"
+                hp = abs(hp)
+            pr(f"{plus_minus} {hp} HP!\n")
         else:
             randhp = randint(hp, higher_hp[0])
             self.hp += randhp
-            pr(f"Plus {randhp} HP!\n")
+            if randhp < 0:
+                plus_minus = "Minus"
+                randhp = abs(randhp)
+            pr(f"{plus_minus} {randhp} HP!\n")
 
     def skill_mod(self, skill, mod, *higher_mod): # !?
         pass
