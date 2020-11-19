@@ -191,7 +191,8 @@ class Character: # Child Class for Player?
         self.location = location
         self.node = None
         self.path = []
-        self.inventory = []
+        self.inventory = [] # CREATE INVENTORY CLASS!
+        self.time = None # Time of day at Character's location
 
     def show_stats(self):
         pr(f"HP: {self.hp}")
@@ -199,16 +200,18 @@ class Character: # Child Class for Player?
 
     def show_inv(self): # Try making one multiline f-String!
         unique_species = sorted(set([x.species for x in self.inventory]))
-        giants_id = [i for i, a in enumerate(self.inventory) if a.size == 'giant']
+        giants_id = [i for i, a in enumerate(self.inventory) if a.is_giant]
         pr(f"INVENTORY ({len(self.inventory)})", end="")
         for item in self.inventory:
-            pr (f" · {item.size} {item}", end="")
+            pr (f" · {item.size_name} {item} (€{item.value})", end="") # chronologically
         if len(unique_species) > 0:
+            pr("")
             pr("")
             pr(f"SPECIES ({len(unique_species)})", end="") # alphabetically
             pr(" · ", end="")
         pr(" · ".join(str(species) for species in unique_species))
         if len(giants_id) > 0:
+            pr("")
             pr(f"GIANTS ({len(giants_id)})", end="") # chronologically
             for idx in giants_id:
                 pr(f" · {self.inventory[idx]}", end="")
@@ -247,7 +250,7 @@ class Character: # Child Class for Player?
                 slain_animal = (Prey(attempt, Prey.fish_species))
                 self.inventory.append(slain_animal)
                 quarry.append(slain_animal)
-                pr(f"Success ({hits[attempt]}) - {slain_animal.size} {slain_animal} caught!") # "Success"-variety
+                pr(f"Success ({hits[attempt]}) - {slain_animal.size_name} {slain_animal} caught!") # "Success"-variety
             else:
                 pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
@@ -264,19 +267,20 @@ class Character: # Child Class for Player?
                 slain_animal = (Prey(attempt, Prey.game_species))
                 self.inventory.append(slain_animal)
                 quarry.append(slain_animal)
-                pr(f"Success ({hits[attempt]}) - {slain_animal.size} {slain_animal} caught!") # "Success"-variety
+                pr(f"Success ({hits[attempt]}) - {slain_animal.size_name} {slain_animal} caught!") # "Success"-variety
             else:
                 pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
         pr(f"You had {attempts} sightings and got {len(quarry)} animals!\n")
         sleep(T.XXL)
 
-''' ITEM Class '''
+''' ITEM Class ''' # REMAKE INTO ANIMAL CLASS
 class Item:
-    sizes = ["very small", "small", "average", "large", "very large", "giant"] # replace with numbers and table with word assignments
     def __init__(self, name):
         self.name = name
-        self.size = choice(Item.sizes)
+        # self.size = choice(Item.size_names)
+        self.size = None
+        self.size_name = "no .size_name"
         self.value = None # to calculate prize for trade
 
     def __repr__(self):
@@ -284,7 +288,10 @@ class Item:
 
 ''' PREY Class '''
 class Prey(Item):
-    Item.sizes.append("infant")
+    # Item.size_names.append("infant")
+    size_names = ["rotten", "tiny", "infant", "famished", "very small", "young", "small", "slightly small", "average", "large", "very large", "massive", "enormous", "huge", "giant", "colossal"]
+
+    ''' Species Pools ''' # Needs Value Multiplicators per Species!
     fish_species = ["Trout", "Pike", "Carp", "Catfish", "Tench",
                     "Bass", "Zander", "Eel", "Cod", "Crayfish"]
     game_species = ["Rabbit", "Wild Goose", "Turkey", "Mallard", "Deer","Squirrel",
@@ -293,25 +300,35 @@ class Prey(Item):
                      "Maestro", "Silly", "Big", "Old Boy"]
     nicknames = ["Joey", "Steve", "Magnus", "Herman", "Fritz", "Hank", "Bob",
              "Al", "Otto", "Willie", "Tommy", "Ricky", "Dewy", "Georgie", "Olaf"]
+
     def __init__(self, name, species_pool):
         super().__init__(name)
         self.species_pool = species_pool
         self.species = choice(self.species_pool)
         self.title = ""
-        if self.size == "giant":
+        self.size = randint(0,15) # Prey objects have random size
+        self.size_name = Prey.size_names[self.size]
+        self.is_giant = self.size >= 13
+        self.is_puny = self.size < 3
+        self.value_mod = round(uniform(0.85, 1.15), 2)
+        if self.is_giant:
+            self.value_mod = round(uniform(1.35, 1.75), 2) # Trophy Bonus
             if random() > 0.50:
                 self.title = f"{choice(self.nick_titles)} "
             self.name = f"{self.title}{choice(self.nicknames)}"
+        elif self.is_puny:
+            self.value_mod = round(uniform(1.55, 1.95), 2)
         else:
             self.name = None
+        self.value = int((self.size + 2) ** 2 * self.value_mod // 3) - 1
 
     def __repr__(self):
-        if self.size == "giant":
+        if self.is_giant:
             return f"{self.species} ('{self.name}')"
         else:
             return f"{self.species}"
 
-
+''' EXAMPLE A '''
 ''' AREA '''
 geryna = Area("Geryna")
 
