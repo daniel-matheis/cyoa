@@ -1,4 +1,4 @@
-""" CYOA Node-Choice-FX System """
+""" CYOA Node-Choice-FX System · imju.li/CYOA """
 
 import os
 from random import *
@@ -15,7 +15,7 @@ def pr(txt, **kwargs):
 
 ''' T Class (Time & Tempo) '''
 class T:    # all in seconds
-    PERCENT   = 0.33      # 1.00 for Original Time of Pauses
+    PERCENT   =    0.13     # 1.00 for Original Time of Pauses
     XXS     = 0.29*PERCENT
     XS      = 0.47*PERCENT
     S       = 0.56*PERCENT
@@ -48,28 +48,40 @@ class C:
     UNDERLINE       = "\033[4m"
     END             = "\033[0m" # Reset All
 
+''' AREA Class '''
+class Area:
+    def __init__(self, name):
+        self.name = name
+        self.nodes = []
+        self.sample_prey = [] # weighed sample of fauna for every area's flora
+
+    def __repr__(self):
+        return f"{self.name}"
+
 ''' NODE Class '''
 class Node:
+    instances = []
     def __init__(self, name, area, txt):
         self.name = name
         self.area = area
         self.txt = txt
         self.choices = []
         self.decision = None
-        self.next_node = None
-        self.been_here = False
-        self.familiarity = ""
+        self.next_node = "x"
+        self.been_here = 0
+        self.familiar = ""
+        Node.instances.append(self)
 
     def __repr__(self):
-        return f"{self.name} in {self.area}"
+        return f"{self.name}" # ' in {self.area}'
 
     def play(self): # Main Method that calls upon the single parts
         self.node_prep()
         player.node = self
-        player.location = self.name
-        player.visited_nodes.append(self)
-        pr(f"You're {self.familiarity}at the {C.CYAN}{player.location}{C.END}.")
-        self.been_here = True
+        player.location = self
+        player.path.append(self)
+        pr(f"You're {self.familiar}at the {C.CYAN}{player.location.name}{C.END}.")
+        self.been_here += 1
         self.print_node_txt()
         self.print_choices_txt()
         # if not self.choices: # needed if no choices in node
@@ -80,12 +92,16 @@ class Node:
         self.play_next_node()
 
     def node_prep(self):
-        if self.been_here and self.familiarity == "back again ":
-            self.familiarity = "once more back again "
-        elif self.been_here and self.familiarity == "back ":
-            self.familiarity = "back again "
-        elif self.been_here:
-            self.familiarity = "back "
+        if self.been_here >= 3:
+            self.familiar = "once more back again "
+        elif self.been_here == 2:
+            self.familiar = "back again "
+        elif self.been_here == 1:
+            self.familiar = "again "
+        elif self.been_here == -1:
+            self.familiar = "still "
+        else:
+            self.familiar = ""
 
     def print_node_txt(self):
         t = f'pr(f"{self.txt}")'
@@ -141,8 +157,15 @@ class Node:
         self.choices[self.decision - 1].fx_repercussions()  # FX of Decision
 
     def play_next_node(self):
-        self.next_node = self.choices[self.decision - 1].dest
-        globals()[self.next_node].play() # Play NEXT NODE
+        if self.choices[self.decision - 1].dest: # if there is a next_node
+            self.next_node = self.choices[self.decision - 1].dest
+            this_node = str(self.choices[self.decision].node.name)
+            if self.next_node in this_node.lower():
+                self.been_here = -1
+            globals()[self.next_node].play() # Play NEXT NODE
+        else:
+            self.been_here = -1 # "still " and reset familiarity
+            self.play() # Play the SAME NODE AGAIN if no destination (def_choices)
 
 ''' CHOICE Class '''
 class Choice:
@@ -167,17 +190,30 @@ class Character: # Child Class for Player?
         self.hp = 50
         self.location = location
         self.node = None
-        self.visited_nodes = []
+        self.path = []
         self.inventory = []
 
     def show_stats(self):
         pr(f"HP: {self.hp}")
+        pr("")
 
-    def show_inv(self):
-        pr(f"INVENTORY ({len(self.inventory)}) ·", end=" ")
+    def show_inv(self): # Try making one multiline f-String!
+        unique_species = sorted(set([x.species for x in self.inventory]))
+        giants_id = [i for i, a in enumerate(self.inventory) if a.size == 'giant']
+        pr(f"INVENTORY ({len(self.inventory)})", end="")
         for item in self.inventory:
-            pr(item, end=" · ")
-        pr("\n")
+            pr (f" · {item.size} {item}", end="")
+        if len(unique_species) > 0:
+            pr("")
+            pr(f"SPECIES ({len(unique_species)})", end="") # alphabetically
+            pr(" · ", end="")
+        pr(" · ".join(str(species) for species in unique_species))
+        if len(giants_id) > 0:
+            pr(f"GIANTS ({len(giants_id)})", end="") # chronologically
+            for idx in giants_id:
+                pr(f" · {self.inventory[idx]}", end="")
+            pr("")
+        pr("")
 
     def hp_mod(self, hp, *higher_hp):
         plus_minus = "Plus"
@@ -204,14 +240,14 @@ class Character: # Child Class for Player?
     def fish(self, attempts):
         quarry = []
         hits = []
-        for i in range(attempts):
+        for attempt in range(attempts):
             sleep(T.XL)
             hits.append(round(random(),2))
-            if hits[i] >= 0.42:
-                slain_animal = (Prey(i, Prey.fish_species))
+            if hits[attempt] >= 0.42:
+                slain_animal = (Prey(attempt, Prey.fish_species))
                 self.inventory.append(slain_animal)
                 quarry.append(slain_animal)
-                pr(f"Success ({hits[i]}) - {str(slain_animal)} caught!") # "Success"-variety
+                pr(f"Success ({hits[attempt]}) - {slain_animal.size} {slain_animal} caught!") # "Success"-variety
             else:
                 pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
@@ -221,14 +257,14 @@ class Character: # Child Class for Player?
     def hunt(self, attempts):
         quarry = []
         hits = []
-        for i in range(attempts):
+        for attempt in range(attempts):
             sleep(T.XS)
             hits.append(round(random(),2))
-            if hits[i] >= 0.52:
-                slain_animal = (Prey(i, Prey.game_species))
+            if hits[attempt] >= 0.52:
+                slain_animal = (Prey(attempt, Prey.game_species))
                 self.inventory.append(slain_animal)
                 quarry.append(slain_animal)
-                pr(f"Success ({hits[i]}) - {str(slain_animal)} caught!") # "Success"-variety
+                pr(f"Success ({hits[attempt]}) - {slain_animal.size} {slain_animal} caught!") # "Success"-variety
             else:
                 pr("Fail.") # Variety! This triggers a lot!
         sleep(T.XXXL)
@@ -237,7 +273,7 @@ class Character: # Child Class for Player?
 
 ''' ITEM Class '''
 class Item:
-    sizes = ["tiny", "small", "average", "large", "very large", "giant"]
+    sizes = ["very small", "small", "average", "large", "very large", "giant"] # replace with numbers and table with word assignments
     def __init__(self, name):
         self.name = name
         self.size = choice(Item.sizes)
@@ -253,37 +289,37 @@ class Prey(Item):
                     "Bass", "Zander", "Eel", "Cod", "Crayfish"]
     game_species = ["Rabbit", "Wild Goose", "Turkey", "Mallard", "Deer","Squirrel",
                     "Boar", "Pheasant", "Grouse", "Partridge", "Weasel", "Muskrat"]
-    nick_prefixes = ["Monster", "Uncle", "Señor", "King", "Lord", "Sweet",
+    nick_titles = ["Monster", "Uncle", "Señor", "King", "Lord", "Sweet",
                      "Maestro", "Silly", "Big", "Old Boy"]
-    nicks = ["Joey", "Steve", "Magnus", "Herman", "Fritz", "Hank", "Bob",
+    nicknames = ["Joey", "Steve", "Magnus", "Herman", "Fritz", "Hank", "Bob",
              "Al", "Otto", "Willie", "Tommy", "Ricky", "Dewy", "Georgie", "Olaf"]
-    def __init__(self, name, species):
+    def __init__(self, name, species_pool):
         super().__init__(name)
-        self.prefix = ""
-        self.species = species
-        self.name = choice(self.species)
-        self.type = self.name
+        self.species_pool = species_pool
+        self.species = choice(self.species_pool)
+        self.title = ""
         if self.size == "giant":
             if random() > 0.50:
-                self.prefix = choice(self.nick_prefixes) + " "
-            self.name = f'{self.name} ("{self.prefix}{choice(self.nicks)}")'
-
-''' AREA Class '''
-class Area:
-    def __init__(self, name):
-        self.name = name
-        self.nodes = []
-        self.sample_prey = [] # weighed sample of fauna for every area's flora
+                self.title = f"{choice(self.nick_titles)} "
+            self.name = f"{self.title}{choice(self.nicknames)}"
+        else:
+            self.name = None
 
     def __repr__(self):
-        return f"{self.name}"
+        if self.size == "giant":
+            return f"{self.species} ('{self.name}')"
+        else:
+            return f"{self.species}"
+
+
+''' AREA '''
+geryna = Area("Geryna")
 
 ''' CHARACTER & ITEMS '''
-geryna = Area("Geryna")
-player = Character("Dan", "Gate")
-vip_npc_001 = Character("", "harbour") # Trader at the market; goods & intel
+player = Character("Dan", "gate")
+merchant = Character("Ando", "harbour")
 
-''' NODES & CHOICES '''
+''' NODES & CHOICES '''     # all choices '.', '!', etc. or not!
 '''      STORY      '''
 gate = Node(
     "City Gate", geryna,
@@ -310,15 +346,24 @@ pond_c2 = Choice(
     pond, "To the harbour!",
     "harbour")
 harbour = Node(
-    "City Harbour", geryna,
+    "Old Harbour", geryna,
     "The waves are breaking softly on the dock.")
 harbour_c1 = Choice(
-    harbour, "Show stats & inventory",
-    "harbour", "player.show_stats()", "player.show_inv()")
+    harbour, "Show stats about your character.",
+    "harbour", "player.show_stats()")
 harbour_c2 = Choice(
     harbour, "Follow a small path back to the gate",
     "gate", "pr('You slip a couple of times!')", "player.hp_mod(-4,-1)")
 harbour_c3 = Choice(
     harbour, "I really should go catch more fish!",
     "pond", "player.fish(randint(4,9))")
+
+# DEFAULT CHOICES for certain Nodes · MUST be positioned between Nodes and .play()
+for no in range (len(Node.instances)): # Add choice to all instances
+    # Node.instances[no].next_node = Node.instances[no]
+    inventory_choice = Choice(
+        Node.instances[no], "Show Inventory.",
+        None, "player.show_inv()")
+
+''' START: first Node.play() '''
 gate.play()
