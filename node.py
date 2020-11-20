@@ -124,7 +124,7 @@ class Node:
                 try:
                     inp = input()
                     if inp == "" or inp == " " or inp == "0" or inp == "1":
-                        break
+                        break # Good Input, ready to continue
                     pr(f"Press 'Enter'.")
                 except ValueError:
                     pr("ValueError")
@@ -142,7 +142,7 @@ class Node:
             try:
                 self.decision = int(input(""))  # Decision Integer Check
                 if len(self.choices) >= self.decision > 0:
-                    break
+                    break # Good Input, ready to continue
                 pr(f"Enter number within choices{punc_mark}")
                 input_tries += 1
             except ValueError: # No Integer Exception
@@ -192,6 +192,7 @@ class Character: # Child Class for Player?
         self.node = None
         self.path = []
         self.inventory = [] # CREATE INVENTORY CLASS!
+        self.credits = 0
         self.time = None # Time of day at Character's location
 
     def show_stats(self):
@@ -199,6 +200,7 @@ class Character: # Child Class for Player?
         pr("")
 
     def show_inv(self): # Try making one multiline f-String!
+        pr(f"{C.BOLD}€{self.credits}{C.END}")
         unique_species = sorted(set([x.species for x in self.inventory]))
         giants_id = [i for i, a in enumerate(self.inventory) if a.is_giant]
         pr(f"INVENTORY ({len(self.inventory)})", end="")
@@ -236,6 +238,44 @@ class Character: # Child Class for Player?
 
     def skill_mod(self, skill, mod, *higher_mod): # !?
         pass
+
+    def sell(self, buyer, *wares):
+        sale_value = 0
+        pr(f"Sell something to {buyer.name}:")
+        pr(f"{C.YELLOW}0{C.END} · Stop trade.")
+        for i, item in enumerate(self.inventory):
+            pr(f"{C.YELLOW}{i + 1}{C.END} · {item.size_name} {item} (€{item.value})")
+        while True:
+            try:
+                raw_inp = input()
+                inp = raw_inp.replace(","," ").replace("."," ").replace(";"," ")
+                sale_items = [(int(s) - 1) for s in inp.split() if s.isdigit()]
+                if not sale_items:
+                    pr(f"No items selected.")
+                    pr("")
+                    break
+                else:
+                    items_str = "items"
+                    if len(sale_items) == 1:
+                        items_str = "item"
+                    pr(f"{C.GRAY}{C.CURSIVE}Sell {len(sale_items)} {items_str}{C.END}", end="")
+                    for i in sorted(sale_items, reverse=True):
+                        buyer.inventory.append(self.inventory[i]) # Add to buyer
+                        sale_value += self.inventory[i].value
+                        pr(f" · {C.GRAY}{self.inventory[i].size_name} {self.inventory[i]}{C.END}", end="")
+                        del self.inventory[i] # Remove from seller
+                    pr("\n")
+                    # pr(f"{buyer.name.upper()}'S", end=" ")
+                    # buyer.show_inv()
+                    pr(f"Total value of the sale: {sale_value}")
+                    self.credits += sale_value
+                    pr(f"Your credits now: {self.credits}")
+                    pr("")
+                    break
+            except:
+                pr("")
+                pr("Enter valid number(s) of item(s) to sell.")
+                pr("")
 
     def catch(self, attempts, targets): # merge fish() & hunt()
         pass
@@ -324,7 +364,7 @@ class Prey(Item):
 
     def __repr__(self):
         if self.is_giant:
-            return f"{self.species} ('{self.name}')"
+            return f"{self.species} '{self.name}'"
         else:
             return f"{self.species}"
 
@@ -347,6 +387,7 @@ gate_c1 = Choice(
 gate_c2 = Choice(
     gate, "Fish in a freshwater pond next to the harbour.",
     "pond", "player.fish(randint(2,7))")
+sell_c3 = Choice(gate, "Sell some goods to the Merchant.", "gate", "pr('Sale!')", "player.sell(merchant, 0)")
 woods = Node(
     "Woods", geryna,
     "The deep woods. Nothing much here yet.")
