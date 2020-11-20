@@ -61,7 +61,7 @@ class Area:
 ''' NODE Class '''
 class Node:
     instances = []
-    def __init__(self, name, area, txt):
+    def __init__(self, name, area, txt, *args):
         self.name = name
         self.area = area
         self.txt = txt
@@ -70,6 +70,10 @@ class Node:
         self.next_node = "x"
         self.been_here = 0
         self.familiar = ""
+        if args:
+          self.time_passed = args[0] ###
+        else:
+          self.time_passed = 0 ###
         Node.instances.append(self)
 
     def __repr__(self):
@@ -77,18 +81,25 @@ class Node:
 
     def play(self): # Main Method that calls upon the single parts
         self.node_prep()
+        merchant.credits += 50 ### NEEDS TIME PASSED ATTRIBUTE INSTEAD
         player.node = self
         player.location = self
         player.path.append(self)
         pr(f"You're {self.familiar}at the {C.CYAN}{player.location.name}{C.END}.")
         self.been_here += 1
         self.print_node_txt()
+        player.time += self.time_passed
+        pr(f"player.time: {player.time}")
         self.print_choices_txt()
         # if not self.choices: # needed if no choices in node
         #     return # return or quit()
+
         self.catch_one_choice_case()
         self.take_decision()
         self.fx_fallout()
+        if merchant.credits < 0:
+            pr(f"The Merchant is bankrupt. You win!")
+            quit()
         self.play_next_node()
 
     def node_prep(self):
@@ -165,6 +176,7 @@ class Node:
             globals()[self.next_node].play() # Play NEXT NODE
         else:
             self.been_here = -1 # "still " and reset familiarity
+            player.time -= self.time_passed # Fix until Choices have t_passed
             self.play() # Play the SAME NODE AGAIN if no destination (def_choices)
 
 ''' CHOICE Class '''
@@ -191,9 +203,10 @@ class Character: # Child Class for Player?
         self.location = location
         self.node = None
         self.path = []
-        self.inventory = [] # CREATE INVENTORY CLASS!
+        self.inv = [] # CREATE INVENTORY CLASS!
         self.credits = 0
-        self.time = None # Time of day at Character's location
+        self.licences = [] # License / Right / Permit Class
+        self.time = 0 ### Time passed since Start
 
     def show_stats(self):
         pr(f"HP: {self.hp}")
@@ -201,10 +214,10 @@ class Character: # Child Class for Player?
 
     def show_inv(self): # Try making one multiline f-String!
         pr(f"{C.BOLD}€{self.credits}{C.END}")
-        unique_species = sorted(set([x.species for x in self.inventory]))
-        giants_id = [i for i, a in enumerate(self.inventory) if a.is_giant]
-        pr(f"INVENTORY ({len(self.inventory)})", end="")
-        for item in self.inventory:
+        unique_species = sorted(set([x.species for x in self.inv]))
+        giants_id = [i for i, a in enumerate(self.inv) if a.is_giant]
+        pr(f"INVENTORY ({len(self.inv)})", end="")
+        for item in self.inv:
             pr (f" · {item.size_name} {item} (€{item.value})", end="") # chronologically
         if len(unique_species) > 0:
             pr("")
@@ -216,7 +229,7 @@ class Character: # Child Class for Player?
             pr("")
             pr(f"GIANTS ({len(giants_id)})", end="") # chronologically
             for idx in giants_id:
-                pr(f" · {self.inventory[idx]}", end="")
+                pr(f" · {self.inv[idx]}", end="")
             pr("")
         pr("")
 
@@ -239,17 +252,20 @@ class Character: # Child Class for Player?
     def skill_mod(self, skill, mod, *higher_mod): # !?
         pass
 
-    def sell(self, buyer, *wares):
+    def sell_to(self, buyer):
         sale_value = 0
         pr(f"Sell something to {buyer.name}:")
         pr(f"{C.YELLOW}0{C.END} · Stop trade.")
-        for i, item in enumerate(self.inventory):
+        for i, item in enumerate(self.inv):
             pr(f"{C.YELLOW}{i + 1}{C.END} · {item.size_name} {item} (€{item.value})")
         while True:
             try:
                 raw_inp = input()
                 inp = raw_inp.replace(","," ").replace("."," ").replace(";"," ")
-                sale_items = [(int(s) - 1) for s in inp.split() if s.isdigit()]
+                if raw_inp == "*" or raw_inp == "+":
+                    sale_items = [i for i, e in enumerate(self.inv)]
+                else:
+                    sale_items = [(int(s) - 1) for s in inp.split() if s.isdigit()]
                 if not sale_items:
                     pr(f"No items selected.")
                     pr("")
@@ -260,19 +276,20 @@ class Character: # Child Class for Player?
                         items_str = "item"
                     pr(f"{C.GRAY}{C.CURSIVE}Sell {len(sale_items)} {items_str}{C.END}", end="")
                     for i in sorted(sale_items, reverse=True):
-                        buyer.inventory.append(self.inventory[i]) # Add to buyer
-                        sale_value += self.inventory[i].value
-                        pr(f" · {C.GRAY}{self.inventory[i].size_name} {self.inventory[i]}{C.END}", end="")
-                        del self.inventory[i] # Remove from seller
+                        buyer.inv.append(self.inv[i]) # Add to buyer
+                        sale_value += self.inv[i].value
+                        pr(f" · {C.GRAY}{self.inv[i].size_name} {self.inv[i]}{C.END}", end="")
+                        del self.inv[i] # Remove from seller
                     pr("\n")
-                    # pr(f"{buyer.name.upper()}'S", end=" ")
-                    # buyer.show_inv()
+                    buyer.credits -= sale_value # Subtract credits from buyer
+                    self.credits += sale_value # Add credits to seller
+                    pr(f"{buyer.name.upper()} (Merchant)")
+                    buyer.show_inv()
                     pr(f"Total value of the sale: {sale_value}")
-                    self.credits += sale_value
                     pr(f"Your credits now: {self.credits}")
                     pr("")
                     break
-            except:
+            except IndexError:
                 pr("")
                 pr("Enter valid number(s) of item(s) to sell.")
                 pr("")
@@ -288,7 +305,7 @@ class Character: # Child Class for Player?
             hits.append(round(random(),2))
             if hits[attempt] >= 0.42:
                 slain_animal = (Prey(attempt, Prey.fish_species))
-                self.inventory.append(slain_animal)
+                self.inv.append(slain_animal)
                 quarry.append(slain_animal)
                 pr(f"Success ({hits[attempt]}) - {slain_animal.size_name} {slain_animal} caught!") # "Success"-variety
             else:
@@ -305,7 +322,7 @@ class Character: # Child Class for Player?
             hits.append(round(random(),2))
             if hits[attempt] >= 0.52:
                 slain_animal = (Prey(attempt, Prey.game_species))
-                self.inventory.append(slain_animal)
+                self.inv.append(slain_animal)
                 quarry.append(slain_animal)
                 pr(f"Success ({hits[attempt]}) - {slain_animal.size_name} {slain_animal} caught!") # "Success"-variety
             else:
@@ -313,6 +330,19 @@ class Character: # Child Class for Player?
         sleep(T.XXXL)
         pr(f"You had {attempts} sightings and got {len(quarry)} animals!\n")
         sleep(T.XXL)
+
+''' LICENCE Class '''
+class Licence:
+    def __init__(self, name, holder, *permits):
+        self.name = name
+        self.holder = holder
+        holder.licences.append(self)
+        self.permits = []
+        for p in permits:
+            self.permits.append(p)
+
+    def __repr__(self):
+        return f"{self.name}"
 
 ''' ITEM Class ''' # REMAKE INTO ANIMAL CLASS
 class Item:
@@ -329,7 +359,7 @@ class Item:
 ''' PREY Class '''
 class Prey(Item):
     # Item.size_names.append("infant")
-    size_names = ["rotten", "tiny", "infant", "famished", "very small", "young", "small", "slightly small", "average", "large", "very large", "massive", "enormous", "huge", "giant", "colossal"]
+    size_names = ["rotten", "infant", "tiny", "famished", "very small", "young", "small", "slightly small", "regular", "large", "fat", "very large", "massive", "huge", "giant", "colossal"]
 
     ''' Species Pools ''' # Needs Value Multiplicators per Species!
     fish_species = ["Trout", "Pike", "Carp", "Catfish", "Tench",
@@ -349,6 +379,8 @@ class Prey(Item):
         self.size = randint(0,15) # Prey objects have random size
         self.size_name = Prey.size_names[self.size]
         self.is_giant = self.size >= 13
+        self.is_young = self.size == 5
+        self.is_infant = self.size == 1
         self.is_puny = self.size < 3
         self.value_mod = round(uniform(0.85, 1.15), 2)
         if self.is_giant:
@@ -356,6 +388,10 @@ class Prey(Item):
             if random() > 0.50:
                 self.title = f"{choice(self.nick_titles)} "
             self.name = f"{self.title}{choice(self.nicknames)}"
+        elif self.is_young:
+            self.value_mod = round(uniform(1.55, 1.95), 2)
+        elif self.is_infant:
+            self.value_mod = round(uniform(2.75, 3.95), 2)
         elif self.is_puny:
             self.value_mod = round(uniform(1.55, 1.95), 2)
         else:
@@ -380,23 +416,23 @@ merchant = Character("Ando", "harbour")
 '''      STORY      '''
 gate = Node(
     "City Gate", geryna,
-    "Welcome to {self.area.name}. You're in front of the {self.name}")
+    "Welcome to {self.area.name}. You're in front of the {self.name}", 2)
 gate_c1 = Choice(
     gate, "Try to catch some wild animals.",
     "woods", "pr('Let\\'s get the hunt on!')", "player.hunt(randint(2,5))","player.skill_mod(3,15)")
 gate_c2 = Choice(
     gate, "Fish in a freshwater pond next to the harbour.",
-    "pond", "player.fish(randint(2,7))")
-sell_c3 = Choice(gate, "Sell some goods to the Merchant.", "gate", "pr('Sale!')", "player.sell(merchant, 0)")
+    "pond", "player.fish(randint(2,7))") # Need a license; either buy or earn
+sell_c3 = Choice(gate, "Sell some goods to the Merchant.", "gate", "pr('* or + to sell all.')", "player.sell_to(merchant)")
 woods = Node(
     "Woods", geryna,
-    "The deep woods. Nothing much here yet.")
+    "The deep woods. Nothing much here yet.", 4)
 woods_c1 = Choice(
     woods, "Back to the city gate.",
     "gate")
 pond = Node(
     "Fish Pond", geryna,
-    "It's a beautiful spot and there seem to be plenty of fish but after a few hours you get tired.")
+    "It's a beautiful spot and there seem to be plenty of fish but after a few hours you get tired.", 7)
 pond_c1 = Choice(
     pond, "Take a walk back through the woods.",
     "woods", "pr('A little workout does wonders!')", "player.hp_mod(2,6)")
@@ -405,7 +441,7 @@ pond_c2 = Choice(
     "harbour")
 harbour = Node(
     "Old Harbour", geryna,
-    "The waves are breaking softly on the dock.")
+    "The waves are breaking softly on the dock.", 1)
 harbour_c1 = Choice(
     harbour, "Show stats about your character.",
     "harbour", "player.show_stats()")
@@ -419,9 +455,12 @@ harbour_c3 = Choice(
 # DEFAULT CHOICES for certain Nodes · MUST be positioned between Nodes and .play()
 for no in range (len(Node.instances)): # Add choice to all instances
     # Node.instances[no].next_node = Node.instances[no]
-    inventory_choice = Choice(
+    inv_choice = Choice( # CHOICES NEED TIME_PASSED ATTRIBUTE TOO!?
         Node.instances[no], "Show Inventory.",
         None, "player.show_inv()")
+
+hunting_lic = Licence("Hunting Licence ·A·", player, "hunt-lic-A", "hunt-lic-B")
+pr(player.__dict__)
 
 ''' START: first Node.play() '''
 gate.play()
