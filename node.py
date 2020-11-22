@@ -3,7 +3,7 @@
 import os
 from random import *
 from time import *
-import textwrap
+# import textwrap
 
 ''' Clear the screen '''
 def clear_screen():
@@ -59,6 +59,7 @@ class Area:
         return f"{self.name}"
 
 ''' NODE Class '''
+# counter = 0
 class Node:
     instances = []
     def __init__(self, name, area, txt, *args):
@@ -66,7 +67,7 @@ class Node:
         self.area = area
         self.txt = txt
         self.choices = []
-        self.decision = None
+        self.dcsn_idx = None
         self.next_node = "x"
         self.been_here = 0
         self.familiar = ""
@@ -81,7 +82,7 @@ class Node:
 
     def play(self): # Main Method that calls upon the single parts
         self.node_prep()
-        merchant.credits += 50 ### NEEDS TIME PASSED ATTRIBUTE INSTEAD
+        merchant.credits += 42 ### NEEDS TIME PASSED ATTRIBUTE INSTEAD
         player.node = self
         player.location = self
         player.path.append(self)
@@ -130,7 +131,7 @@ class Node:
 
     def catch_one_choice_case(self):
         if len(self.choices) == 1:
-            self.decision = 1
+            self.dcsn_idx = 0
             while True:
                 try:
                     inp = input()
@@ -139,7 +140,7 @@ class Node:
                     pr(f"Press 'Enter'.")
                 except ValueError:
                     pr("ValueError")
-            pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
+            pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.dcsn_idx].txt}{C.END}")
             sleep(T.XS)
             pr("")
             globals()[self.choices[0].dest].play()
@@ -151,8 +152,8 @@ class Node:
             if input_tries >= 3:
                 punc_mark = "!"
             try:
-                self.decision = int(input(""))  # Decision Integer Check
-                if len(self.choices) >= self.decision > 0:
+                self.dcsn_idx = (int(input("")) - 1)  # Decision Integer Check
+                if len(self.choices) >= self.dcsn_idx > -1:
                     break # Good Input, ready to continue
                 pr(f"Enter number within choices{punc_mark}")
                 input_tries += 1
@@ -160,17 +161,17 @@ class Node:
                 print(f"ValueError - Enter number{punc_mark}")
                 input_tries += 1
         sleep(0.07)
-        pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.decision - 1].txt}{C.END}")
+        pr(f"{C.GRAY}{C.CURSIVE}{self.choices[self.dcsn_idx].txt}{C.END}")
         sleep(T.XS)
         pr("")
 
     def fx_fallout(self):
-        self.choices[self.decision - 1].fx_repercussions()  # FX of Decision
+        self.choices[self.dcsn_idx].fx_repercussions()  # FX of Decision
 
     def play_next_node(self):
-        if self.choices[self.decision - 1].dest: # if there is a next_node
-            self.next_node = self.choices[self.decision - 1].dest
-            this_node = str(self.choices[self.decision].node.name)
+        if self.choices[self.dcsn_idx].dest: # if there is a next_node
+            self.next_node = self.choices[self.dcsn_idx].dest
+            this_node = str(self.choices[self.dcsn_idx].node.name)
             if self.next_node in this_node.lower():
                 self.been_here = -1
             globals()[self.next_node].play() # Play NEXT NODE
@@ -200,6 +201,7 @@ class Character: # Child Class for Player?
     def __init__(self, name, location):
         self.name = name
         self.hp = 50
+        self.armor = None
         self.location = location
         self.node = None
         self.path = []
@@ -211,9 +213,9 @@ class Character: # Child Class for Player?
     def show_stats(self):
         pr(f"HP: {self.hp}")
         pr("")
+        pr(f"{C.BOLD}€{self.credits}{C.END}")
 
     def show_inv(self): # Try making one multiline f-String!
-        pr(f"{C.BOLD}€{self.credits}{C.END}")
         unique_species = sorted(set([x.species for x in self.inv]))
         giants_id = [i for i, a in enumerate(self.inv) if a.is_giant]
         pr(f"INVENTORY ({len(self.inv)})", end="")
@@ -283,7 +285,7 @@ class Character: # Child Class for Player?
                     pr("\n")
                     buyer.credits -= sale_value # Subtract credits from buyer
                     self.credits += sale_value # Add credits to seller
-                    pr(f"{buyer.name.upper()} (Merchant)")
+                    pr(f"{buyer.name.upper()} (Merchant) €{merchant.credits}")
                     buyer.show_inv()
                     pr(f"Total value of the sale: {sale_value}")
                     pr(f"Your credits now: {self.credits}")
@@ -303,7 +305,7 @@ class Character: # Child Class for Player?
         for attempt in range(attempts):
             sleep(T.XL)
             hits.append(round(random(),2))
-            if hits[attempt] >= 0.42:
+            if hits[attempt] >= 0.62:
                 slain_animal = (Prey(attempt, Prey.fish_species))
                 self.inv.append(slain_animal)
                 quarry.append(slain_animal)
@@ -320,7 +322,7 @@ class Character: # Child Class for Player?
         for attempt in range(attempts):
             sleep(T.XS)
             hits.append(round(random(),2))
-            if hits[attempt] >= 0.52:
+            if hits[attempt] >= 0.72:
                 slain_animal = (Prey(attempt, Prey.game_species))
                 self.inv.append(slain_animal)
                 quarry.append(slain_animal)
@@ -331,7 +333,7 @@ class Character: # Child Class for Player?
         pr(f"You had {attempts} sightings and got {len(quarry)} animals!\n")
         sleep(T.XXL)
 
-''' LICENCE Class '''
+''' LICENCE Class - for RIGHTS, TICKETS, PAPERS, PERMITS, ... '''
 class Licence:
     def __init__(self, name, holder, *permits):
         self.name = name
@@ -349,14 +351,14 @@ class Item:
     def __init__(self, name):
         self.name = name
         # self.size = choice(Item.size_names)
-        self.size = None
-        self.size_name = "no .size_name"
+        self.size = None # as Integer
+        self.size_name = "no .size_name" # based on List size_names
         self.value = None # to calculate prize for trade
 
     def __repr__(self):
         return f"{self.size} {self.name}"
 
-''' PREY Class '''
+''' PREY Class - Make list of lists or dict w/ x_species as value for hunt/fish combining'''
 class Prey(Item):
     # Item.size_names.append("infant")
     size_names = ["rotten", "infant", "tiny", "famished", "very small", "young", "small", "slightly small", "regular", "large", "fat", "very large", "massive", "huge", "giant", "colossal"]
@@ -409,33 +411,39 @@ class Prey(Item):
 geryna = Area("Geryna")
 
 ''' CHARACTER & ITEMS '''
-player = Character("Dan", "gate")
-merchant = Character("Ando", "harbour")
+player = Character("D", "gate")
+merchant = Character("Ando", "woods")
+merchant.credits = 69 + 42
 
 ''' NODES & CHOICES '''     # all choices '.', '!', etc. or not!
 '''      STORY      '''
 gate = Node(
     "City Gate", geryna,
-    "Welcome to {self.area.name}. You're in front of the {self.name}", 2)
+    "Welcome to {self.area.name}. You're in front of the {self.name}", 1)
 gate_c1 = Choice(
     gate, "Try to catch some wild animals.",
-    "woods", "pr('Let\\'s get the hunt on!')", "player.hunt(randint(2,5))","player.skill_mod(3,15)")
+    "woods", "pr('Let\\'s get the hunt on!')", "player.hunt(randint(2,7))","player.skill_mod(3,15)")
 gate_c2 = Choice(
     gate, "Fish in a freshwater pond next to the harbour.",
-    "pond", "player.fish(randint(2,7))") # Need a license; either buy or earn
-sell_c3 = Choice(gate, "Sell some goods to the Merchant.", "gate", "pr('* or + to sell all.')", "player.sell_to(merchant)")
+    "pond", "player.fish(randint(3,8))") # Need a license; either buy or earn
 woods = Node(
     "Woods", geryna,
-    "The deep woods. Nothing much here yet.", 4)
+    "You hunt a few wild animals to sell to 'Ando'.", 4)
 woods_c1 = Choice(
     woods, "Back to the city gate.",
     "gate")
+sell_c3 = Choice(
+    woods, "Sell some goods to the Ando, the Merchant.",
+    "gate", "pr('* or + to sell all.')", "player.sell_to(merchant)")
+show_path = Choice(
+    woods, "Show Path of Player & Length",
+    "woods", "pr(f'Path: {[i for i in player.path]}\\nLength: {len(player.path)}', end='\\n\\n')", "player.time -= self.node.time_passed")
 pond = Node(
     "Fish Pond", geryna,
     "It's a beautiful spot and there seem to be plenty of fish but after a few hours you get tired.", 7)
 pond_c1 = Choice(
-    pond, "Take a walk back through the woods.",
-    "woods", "pr('A little workout does wonders!')", "player.hp_mod(2,6)")
+    pond, "Take a brisk walk back through the park to the City Gate.",
+    "gate", "pr('A little workout does wonders!')", "player.hp_mod(2,6)")
 pond_c2 = Choice(
     pond, "To the harbour!",
     "harbour")
@@ -449,8 +457,8 @@ harbour_c2 = Choice(
     harbour, "Follow a small path back to the gate",
     "gate", "pr('You slip a couple of times!')", "player.hp_mod(-4,-1)")
 harbour_c3 = Choice(
-    harbour, "I really should go catch more fish!",
-    "pond", "player.fish(randint(4,9))")
+    harbour, "I really should go catch more fish at the pond!",
+    "pond", "player.fish(randint(2,9))")
 
 # DEFAULT CHOICES for certain Nodes · MUST be positioned between Nodes and .play()
 for no in range (len(Node.instances)): # Add choice to all instances
@@ -461,6 +469,6 @@ for no in range (len(Node.instances)): # Add choice to all instances
 
 hunting_lic = Licence("Hunting Licence ·A·", player, "hunt-lic-A", "hunt-lic-B")
 pr(player.__dict__)
-
+pr("")
 ''' START: first Node.play() '''
 gate.play()
