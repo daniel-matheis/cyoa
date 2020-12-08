@@ -11,4 +11,13 @@ First though Nodes with their Text and possible Choices with their Texts, Destin
 
 Nov 17th, 2020
 All systems running. 300 lines including example.
-Next are skill test implementation and solving the fishing/hunting redundancy
+
+-----------------
+
+Nov 23rd, 2020
+Split into abd.py for the main node functionality and screenplay itself plus 4 modules:
+1. character.py - character and license classes
+2. item.py - for the item classes and their children
+3. colors.py - for colors and all other default settings
+4. utils.py - for all special functions
+5. (ship.py - not yet integrated) - for all travelling, resource hunting and fighting with a ship (its own mini-game)
